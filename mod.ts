@@ -1,4 +1,4 @@
-import { isStringSingleLine } from "https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.4/mod.ts";
+import { isStringSingleLine } from "https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.5/mod.ts";
 const parametersNeedLowerCase: string[] = [
 	"rel",
 	"type"
@@ -139,7 +139,7 @@ export class HTTPHeaderLink {
 	 * Handle the HTTP header `Link` according to the specification RFC 8288.
 	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
 	 */
-	constructor(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]) {
+	constructor(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]) {
 		if (inputs.length > 0) {
 			this.add(...inputs);
 		}
@@ -149,7 +149,7 @@ export class HTTPHeaderLink {
 	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
 	 * @returns {this}
 	 */
-	add(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): this {
+	add(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): this {
 		for (const input of inputs) {
 			if (input instanceof HTTPHeaderLink) {
 				this.#entries.push(...structuredClone(input.#entries));
@@ -170,10 +170,15 @@ export class HTTPHeaderLink {
 					return [uri, structuredClone(parameters)];
 				}));
 			} else {
-				for (const entry of parseLinkFromString(((
-					input instanceof Headers ||
-					input instanceof Response
-				) ? ((input instanceof Headers) ? input : input.headers).get("Link") : input) ?? "")) {
+				let inputFmt: string;
+				if (input instanceof Response) {
+					inputFmt = input.headers.get("Link") ?? "";
+				} else if (input instanceof Headers) {
+					inputFmt = input.get("Link") ?? "";
+				} else {
+					inputFmt = input;
+				}
+				for (const entry of parseLinkFromString(inputFmt)) {
 					this.#entries.push(entry);
 				}
 			}
@@ -245,7 +250,7 @@ export class HTTPHeaderLink {
 	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
 	 * @returns {HTTPHeaderLink}
 	 */
-	static parse(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): HTTPHeaderLink {
+	static parse(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): HTTPHeaderLink {
 		return new this(...inputs);
 	}
 	/**
@@ -253,7 +258,7 @@ export class HTTPHeaderLink {
 	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
 	 * @returns {string}
 	 */
-	static stringify(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): string {
+	static stringify(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): string {
 		return new this(...inputs).toString();
 	}
 }
