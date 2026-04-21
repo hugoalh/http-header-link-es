@@ -1,24 +1,31 @@
+import {
+	parseHTTPHeaderValue,
+	stringifyHTTPHeaderValueFromContexts,
+	type HTTPHeaderValueParseOptions,
+	type HTTPHeaderValueParseParameterKeysOnDuplicatedAction
+} from "https://raw.githubusercontent.com/hugoalh/http-header-value-handler-es/v0.1.0/mod.ts";
 import { isStringSingleLine } from "https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.5/mod.ts";
-const parametersNeedLowerCase: string[] = [
+const parametersNeedLowerCase: readonly string[] = [
 	"rel",
 	"type"
 ];
-const regexpLinkWhitespace = /[\n\r\s\t]/;
+function assertURI(uri: string): void {
+	if (!(isStringSingleLine(uri) && uri.split("").every((character: string): boolean => {
+		return (character.trim().length !== 0);
+	}))) {
+		throw new SyntaxError(`\`${uri}\` is not a valid HTTP header Link URI!`);
+	}
+}
 /**
  * HTTP header `Link` entry.
  */
-export type HTTPHeaderLinkEntry = [
-	uri: string,
-	parameters: { [key: string]: string; }
-];
-function validateURI(uri: string): void {
-	if (!(isStringSingleLine(uri) && !regexpLinkWhitespace.test(uri))) {
-		throw new SyntaxError(`\`${uri}\` is not a valid URI!`);
-	}
+export interface HTTPHeaderLinkEntry {
+	parameters: Record<string, string>;
+	uri: string;
 }
 function* parseLinkFromString(input: string): Generator<HTTPHeaderLinkEntry> {
-	// Remove Unicode characters of BOM (Byte Order Mark) and no-break space.
 	const inputFmt: string = input.replaceAll("\u00A0", "").replaceAll("\uFEFF", "");
+
 	for (let cursor: number = 0; cursor < inputFmt.length; cursor += 1) {
 		while (regexpLinkWhitespace.test(inputFmt.charAt(cursor))) {
 			cursor += 1;
@@ -35,7 +42,7 @@ function* parseLinkFromString(input: string): Generator<HTTPHeaderLinkEntry> {
 			throw new SyntaxError(`Missing URI at position ${cursor}!`);
 		}
 		const uriSlice: string = inputFmt.slice(cursor, cursorEndURI);
-		validateURI(uriSlice);
+		assertURI(uriSlice);
 		const uri: HTTPHeaderLinkEntry[0] = decodeURI(uriSlice);
 		const parameters: HTTPHeaderLinkEntry[1] = {};
 		cursor = cursorEndURI + 1;
@@ -128,6 +135,12 @@ function* parseLinkFromString(input: string): Generator<HTTPHeaderLinkEntry> {
 	}
 }
 /**
+ * Options of the {@linkcode HTTPHeaderLink}.
+ */
+export interface HTTPHeaderLinkOptions {
+	
+}
+/**
  * Handle the HTTP header `Link` according to the specification RFC 8288.
  */
 export class HTTPHeaderLink {
@@ -136,51 +149,49 @@ export class HTTPHeaderLink {
 	}
 	#entries: HTTPHeaderLinkEntry[] = [];
 	/**
-	 * Handle the HTTP header `Link` according to the specification RFC 8288.
-	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
+	 * Initialize.
+	 * @param {string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response} [input] Input. Can append later via the method {@linkcode HTTPHeaderLink.add}.
 	 */
-	constructor(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]) {
-		if (inputs.length > 0) {
-			this.add(...inputs);
+	constructor(input?: string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response) {
+		if (typeof input !== "undefined") {
+			this.add(input);
 		}
 	}
 	/**
 	 * Add entries.
-	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
+	 * @param {string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response} input Input.
 	 * @returns {this}
 	 */
-	add(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): this {
-		for (const input of inputs) {
-			if (input instanceof HTTPHeaderLink) {
-				this.#entries.push(...structuredClone(input.#entries));
-			} else if (Array.isArray(input)) {
-				this.#entries.push(...input.map(([uri, parameters]: HTTPHeaderLinkEntry): HTTPHeaderLinkEntry => {
-					validateURI(uri);
-					Object.entries(parameters).forEach(([key, value]: [string, string]): void => {
-						if (
-							key !== key.toLowerCase() ||
-							!(/^[\w-]+\*?$/.test(key))
-						) {
-							throw new SyntaxError(`\`${key}\` is not a valid parameter key!`);
-						}
-						if (parametersNeedLowerCase.includes(key) && value !== value.toLowerCase()) {
-							throw new SyntaxError(`\`${value}\` is not a valid parameter value!`);
-						}
-					});
-					return [uri, structuredClone(parameters)];
-				}));
+	add(input: string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response): this {
+		if (input instanceof HTTPHeaderLink) {
+			this.#entries.push(...structuredClone(input.#entries));
+		} else if (Array.isArray(input)) {
+			this.#entries.push(...input.map(([uri, parameters]: HTTPHeaderLinkEntry): HTTPHeaderLinkEntry => {
+				assertURI(uri);
+				Object.entries(parameters).forEach(([key, value]: [string, string]): void => {
+					if (
+						key !== key.toLowerCase() ||
+						!(/^[\w-]+\*?$/.test(key))
+					) {
+						throw new SyntaxError(`\`${key}\` is not a valid HTTP header Link parameter key!`);
+					}
+					if (parametersNeedLowerCase.includes(key) && value !== value.toLowerCase()) {
+						throw new SyntaxError(`\`${value}\` is not a valid HTTP header Link parameter value!`);
+					}
+				});
+				return [uri, structuredClone(parameters)];
+			}));
+		} else {
+			let inputFmt: string;
+			if (input instanceof Response) {
+				inputFmt = input.headers.get("Link") ?? "";
+			} else if (input instanceof Headers) {
+				inputFmt = input.get("Link") ?? "";
 			} else {
-				let inputFmt: string;
-				if (input instanceof Response) {
-					inputFmt = input.headers.get("Link") ?? "";
-				} else if (input instanceof Headers) {
-					inputFmt = input.get("Link") ?? "";
-				} else {
-					inputFmt = input;
-				}
-				for (const entry of parseLinkFromString(inputFmt)) {
-					this.#entries.push(entry);
-				}
+				inputFmt = input;
+			}
+			for (const entry of parseLinkFromString(inputFmt)) {
+				this.#entries.push(entry);
 			}
 		}
 		return this;
@@ -193,28 +204,26 @@ export class HTTPHeaderLink {
 		return structuredClone(this.#entries);
 	}
 	/**
-	 * Get entries by parameter.
+	 * Find entries by parameter.
 	 * @param {string} key Key of the parameter.
 	 * @param {string} value Value of the parameter.
 	 * @returns {HTTPHeaderLinkEntry[]} Entries which match the parameter.
 	 */
-	getByParameter(key: string, value: string): HTTPHeaderLinkEntry[] {
-		if (key !== key.toLowerCase()) {
-			throw new SyntaxError(`\`${key}\` is not a valid parameter key!`);
+	findByParameter(key: string, value: string): HTTPHeaderLinkEntry[] {
+		const keyFmt: string = key.toLowerCase();
+		if (keyFmt === "rel") {
+			return this.findByRel(value);
 		}
-		if (key === "rel") {
-			return this.getByRel(value);
-		}
-		return structuredClone(this.#entries.filter((entry: HTTPHeaderLinkEntry): boolean => {
-			return (entry[1][key] === value);
-		}));
+		return this.entries().filter((entry: HTTPHeaderLinkEntry): boolean => {
+			return (entry.parameters[keyFmt] === value);
+		});
 	}
 	/**
-	 * Get entries by parameter `rel`.
+	 * Find entries by parameter `rel`.
 	 * @param {string} value Value of the parameter `rel`.
 	 * @returns {HTTPHeaderLinkEntry[]} Entries which match the parameter.
 	 */
-	getByRel(value: string): HTTPHeaderLinkEntry[] {
+	findByRel(value: string): HTTPHeaderLinkEntry[] {
 		if (value !== value.toLowerCase()) {
 			throw new SyntaxError(`\`${value}\` is not a valid parameter \`rel\` value!`);
 		}
@@ -231,6 +240,9 @@ export class HTTPHeaderLink {
 	hasParameter(key: string, value: string): boolean {
 		return (this.getByParameter(key, value).length > 0);
 	}
+	removeByURI(uri: string): this {
+
+	}
 	/**
 	 * Stringify entries.
 	 * @returns {string} Stringified entries.
@@ -244,22 +256,6 @@ export class HTTPHeaderLink {
 				})
 			].join("; ");
 		}).join(", ");
-	}
-	/**
-	 * Parse the HTTP header `Link` according to the specification RFC 8288.
-	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
-	 * @returns {HTTPHeaderLink}
-	 */
-	static parse(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): HTTPHeaderLink {
-		return new this(...inputs);
-	}
-	/**
-	 * Stringify as the HTTP header `Link` according to the specification RFC 8288.
-	 * @param {...(string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)} inputs Input.
-	 * @returns {string}
-	 */
-	static stringify(...inputs: readonly (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): string {
-		return new this(...inputs).toString();
 	}
 }
 export default HTTPHeaderLink;
