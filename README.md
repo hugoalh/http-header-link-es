@@ -3,7 +3,8 @@
 [**⚖️** MIT](./LICENSE.md)
 
 🔗
-[GitHub](https://github.com/hugoalh/http-header-link-es)
+[DistBoard @hugoalh](https://hugoalh.github.io/distboard/http_header_link_ecmascript)
+● [GitHub](https://github.com/hugoalh/http-header-link-es)
 ● [JSR](https://jsr.io/@hugoalh/http-header-link)
 ● [NPM](https://www.npmjs.com/package/@hugoalh/http-header-link)
 
@@ -52,22 +53,20 @@ This does not request any runtime permission.
 
 - ```ts
   class HTTPHeaderLink {
-    constructor(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]);
-    add(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): this;
+    constructor(input?: string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response);
+    add(input: string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response): this;
     entries(): HTTPHeaderLinkEntry[];
-    getByParameter(key: string, value: string): HTTPHeaderLinkEntry[];
-    getByRel(value: string): HTTPHeaderLinkEntry[];
+    filterByParameter(key: string, value: string): HTTPHeaderLinkEntry[];
+    filterByRel(value: string): HTTPHeaderLinkEntry[];
     hasParameter(key: string, value: string): boolean;
     toString(): string;
-    static parse(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): HTTPHeaderLink;
-    static stringify(...inputs: (string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response)[]): string;
   }
   ```
 - ```ts
-  type HTTPHeaderLinkEntry = [
-    uri: string,
-    parameters: { [key: string]: string; }
-  ];
+  interface HTTPHeaderLinkEntry {
+    parameters: Record<string, string | undefined>;
+    uri: string;
+  }
   ```
 
 > [!NOTE]
@@ -81,7 +80,7 @@ This does not request any runtime permission.
   new HTTPHeaderLink(`<https://example.com>; rel="preconnect"`);
   /*=>
   HTTPHeaderLink [
-    ["https://example.com", { rel: "preconnect" }]
+    { uri: "https://example.com", parameters: { rel: "preconnect" }}
   ]
   */
   ```
@@ -89,7 +88,7 @@ This does not request any runtime permission.
   new HTTPHeaderLink(`<https://example.com/%E8%8B%97%E6%9D%A1>; rel="preconnect"`);
   /*=>
   HTTPHeaderLink [
-    ["https://example.com/苗条", { rel: "preconnect" }]
+    { uri: "https://example.com/苗条", parameters: { rel: "preconnect" }}
   ]
   */
   ```

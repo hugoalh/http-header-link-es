@@ -31,21 +31,21 @@ await invokeDenoNodeJSTransformer({
 			"http",
 			"link"
 		],
-		homepage: "https://github.com/hugoalh/http-header-link-es#readme",
+		homepage: "https://codeberg.org/hugoalh/http-header-link-es#readme",
 		bugs: {
-			url: "https://github.com/hugoalh/http-header-link-es/issues"
+			url: "https://codeberg.org/hugoalh/http-header-link-es/issues"
 		},
 		license: "MIT",
 		author: "hugoalh",
 		repository: {
 			type: "git",
-			url: "git+https://github.com/hugoalh/http-header-link-es.git"
+			url: "git+https://codeberg.org/hugoalh/http-header-link-es.git"
 		},
 		private: false,
 		publishConfig: {
 			access: "public"
 		}
 	},
-	outputDirectory: "dist/npm-npm",
+	outputDirectory: "dist/npm-codeberg",
 	outputDirectoryPreEmpty: true
 });

@@ -7,6 +7,7 @@ authors:
   - name: "HUGOALH"
     alias: "hugoalh"
 repository-code: "https://github.com/hugoalh/http-header-link-es"
+abstract: "An ECMAScript module to handle the HTTP header `Link` according to the specification RFC 8288."
 keywords:
   - "ecmascript"
   - "es"
