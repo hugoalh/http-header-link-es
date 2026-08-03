@@ -1,13 +1,15 @@
-import { invokeDenoNodeJSTransformer } from "DNT";
-import { parse as parseJSONC } from "STD_JSONC";
-const jsrManifest = parseJSONC(await Deno.readTextFile(new URL(import.meta.resolve("./jsr.jsonc"))));
-await invokeDenoNodeJSTransformer({
+import {
+	readManifest,
+	transform
+} from "DNT";
+const manifest = await readManifest("jsr.jsonc");
+await transform({
 	copyEntries: [
 		"LICENSE.md",
 		"README.md"
 	],
 	//@ts-ignore Lazy type.
-	entrypointsScript: jsrManifest.exports,
+	entrypointsScript: manifest.exports,
 	generateDeclarationMap: true,
 	mappings: {
 		"https://raw.githubusercontent.com/hugoalh/http-header-value-handler-es/v0.2.1/handle.ts": {
@@ -22,9 +24,9 @@ await invokeDenoNodeJSTransformer({
 	},
 	metadata: {
 		//@ts-ignore Lazy type.
-		name: jsrManifest.name,
+		name: manifest.name,
 		//@ts-ignore Lazy type.
-		version: jsrManifest.version,
+		version: manifest.version,
 		description: "A module to handle the HTTP header `Link` according to the specification RFC 8288.",
 		keywords: [
 			"header",
