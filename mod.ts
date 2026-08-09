@@ -4,6 +4,7 @@ import {
 	type HTTPHeaderValueElementContext
 } from "https://raw.githubusercontent.com/hugoalh/http-header-value-handler-es/v0.2.1/handle.ts";
 import { isStringSingleLine } from "https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.6/mod.ts";
+import { sortCollectionByKeys } from "https://raw.githubusercontent.com/hugoalh/sort-es/v0.4.0/collection.ts";
 const parametersNeedLowerCase: readonly string[] = [/* UNIQUE */
 	"rel",
 	"type"
@@ -20,24 +21,6 @@ export interface HTTPHeaderLinkEntry {
 	parameters: Record<string, string | undefined>;
 	uri: string;
 }
-function* parseLinkFromString(input: string): Generator<HTTPHeaderLinkEntry> {
-	for (const {
-		parameters,
-		value = ""
-	} of parseHTTPHeaderValueIterate(input)) {
-		if (!(value.startsWith("<") && value.endsWith(">"))) {
-			throw new SyntaxError(`URI \`${value}\` is not start with \`<\` and end with \`>\`!`);
-		}
-		const uriSlice: string = value.slice(1, -1);
-		assertURI(uriSlice);
-		yield {
-			parameters: Object.fromEntries(Object.entries(parameters).map(([key, value]: [string, string | undefined]): [string, string] => {
-				return [key, parametersNeedLowerCase.includes(key) ? value!.toLowerCase() : value!];
-			})),
-			uri: decodeURI(uriSlice)
-		};
-	}
-}
 /**
  * Handle the HTTP header `Link` according to the specification RFC 8288.
  */
@@ -45,7 +28,7 @@ export class HTTPHeaderLink {
 	get [Symbol.toStringTag](): string {
 		return "HTTPHeaderLink";
 	}
-	#entries: HTTPHeaderLinkEntry[] = [];
+	#entries: Map<string, HTTPHeaderLinkEntry> = new Map<string, HTTPHeaderLinkEntry>();
 	/**
 	 * Initialize.
 	 * @param {string | Headers | HTTPHeaderLink | HTTPHeaderLinkEntry[] | Response} [input] Input. Can append later via the method {@linkcode HTTPHeaderLink.add}.
@@ -54,6 +37,29 @@ export class HTTPHeaderLink {
 		if (typeof input !== "undefined") {
 			this.add(input);
 		}
+	}
+	#add(...inputs: readonly HTTPHeaderLinkEntry[]): void {
+		for (const input of inputs) {
+			this.#entries.set(`${input.uri};${JSON.stringify(sortCollectionByKeys(input.parameters))}`, input);
+		}
+	}
+	#addFromString(input: string): void {
+		return this.#add(...Array.from(parseHTTPHeaderValueIterate(input), ({
+			parameters,
+			value = ""
+		}: HTTPHeaderValueElementContext): HTTPHeaderLinkEntry => {
+			if (!(value.startsWith("<") && value.endsWith(">"))) {
+				throw new SyntaxError(`URI \`${value}\` is not start with \`<\` and end with \`>\`!`);
+			}
+			const uriSlice: string = value.slice(1, -1);
+			assertURI(uriSlice);
+			return {
+				parameters: Object.fromEntries(Object.entries(parameters).map(([key, value]: [string, string | undefined]): [string, string] => {
+					return [key, parametersNeedLowerCase.includes(key) ? value!.toLowerCase() : value!];
+				})),
+				uri: decodeURI(uriSlice)
+			};
+		}));
 	}
 	/**
 	 * Add entries.
@@ -64,10 +70,15 @@ export class HTTPHeaderLink {
 		if (input instanceof Headers) {
 			const value: string | null = input.get("Link");
 			if (value !== null) {
-				this.#entries.push(...Array.from(parseLinkFromString(value)));
+				this.#addFromString(value);
 			}
 		} else if (input instanceof HTTPHeaderLink) {
-			this.#entries = structuredClone(input.#entries);
+			for (const [
+				key,
+				value
+			] of input.#entries.entries()) {
+				this.#entries.set(key, value);
+			}
 		} else if (Array.isArray(input)) {
 			for (const {
 				parameters,
@@ -89,14 +100,14 @@ export class HTTPHeaderLink {
 					}
 				}
 			}
-			this.#entries = structuredClone(input);
+			this.#add(...structuredClone(input));
 		} else if (input instanceof Response) {
 			const value: string | null = input.headers.get("Link");
 			if (value !== null) {
-				this.#entries.push(...Array.from(parseLinkFromString(value)));
+				this.#addFromString(value);
 			}
 		} else {
-			this.#entries.push(...Array.from(parseLinkFromString(input)));
+			this.#addFromString(input);
 		}
 		return this;
 	}
@@ -105,7 +116,7 @@ export class HTTPHeaderLink {
 	 * @returns {HTTPHeaderLinkEntry[]} Entries.
 	 */
 	entries(): HTTPHeaderLinkEntry[] {
-		return structuredClone(this.#entries);
+		return structuredClone(Array.from(this.#entries.values()));
 	}
 	/**
 	 * Get entries by parameter.
@@ -118,9 +129,9 @@ export class HTTPHeaderLink {
 		if (keyFmt === "rel") {
 			return this.filterByRel(value);
 		}
-		return structuredClone(this.#entries.filter(({ parameters }: HTTPHeaderLinkEntry): boolean => {
+		return this.entries().filter(({ parameters }: HTTPHeaderLinkEntry): boolean => {
 			return (parameters[keyFmt] === value);
-		}));
+		});
 	}
 	/**
 	 * Get entries by parameter `rel`.
@@ -131,9 +142,9 @@ export class HTTPHeaderLink {
 		if (value !== value.toLowerCase()) {
 			throw new SyntaxError(`\`${value}\` is not a valid parameter \`rel\` value!`);
 		}
-		return structuredClone(this.#entries.filter(({ parameters: { rel } }: HTTPHeaderLinkEntry): boolean => {
+		return this.entries().filter(({ parameters: { rel } }: HTTPHeaderLinkEntry): boolean => {
 			return (rel?.toLowerCase() === value);
-		}));
+		});
 	}
 	/**
 	 * Whether have entries that match parameter.
@@ -149,7 +160,7 @@ export class HTTPHeaderLink {
 	 * @returns {string} Stringified entries.
 	 */
 	toString(): string {
-		return stringifyHTTPHeaderValue(this.#entries.map(({
+		return stringifyHTTPHeaderValue(Array.from(this.#entries.values(), ({
 			parameters,
 			uri
 		}: HTTPHeaderLinkEntry): HTTPHeaderValueElementContext => {

@@ -20,6 +20,11 @@ await transform({
 		"https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.6/mod.ts": {
 			name: "@hugoalh/is-string-singleline",
 			version: "^1.0.6"
+		},
+		"https://raw.githubusercontent.com/hugoalh/sort-es/v0.4.0/collection.ts": {
+			name: "@hugoalh/sort",
+			version: "^0.4.0",
+			subPath: "collection"
 		}
 	},
 	metadata: {
