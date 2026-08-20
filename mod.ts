@@ -2,9 +2,9 @@ import {
 	parseHTTPHeaderValueIterate,
 	stringifyHTTPHeaderValue,
 	type HTTPHeaderValueElementContext
-} from "https://raw.githubusercontent.com/hugoalh/http-header-value-handler-es/v0.2.1/handle.ts";
-import { isStringSingleLine } from "https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.6/mod.ts";
-import { sortCollectionByKeys } from "https://raw.githubusercontent.com/hugoalh/sort-es/v0.4.0/collection.ts";
+} from "jsr:@hugoalh/http-header-value-handler@^0.2.1/handle";
+import { isStringSingleLine } from "jsr:@hugoalh/is-string-singleline@^1.0.6";
+import { sortCollectionByKeys } from "jsr:@hugoalh/sort@^0.4.0/collection";
 const parametersNeedLowerCase: readonly string[] = [/* UNIQUE */
 	"rel",
 	"type"

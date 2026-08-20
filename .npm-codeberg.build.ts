@@ -12,16 +12,16 @@ await transform({
 	entrypointsScript: manifest.exports,
 	generateDeclarationMap: true,
 	mappings: {
-		"https://raw.githubusercontent.com/hugoalh/http-header-value-handler-es/v0.2.1/handle.ts": {
+		"jsr:@hugoalh/http-header-value-handler@^0.2.1/handle": {
 			name: "@hugoalh/http-header-value-handler",
 			version: "^0.2.1",
 			subPath: "handle"
 		},
-		"https://raw.githubusercontent.com/hugoalh/is-string-singleline-es/v1.0.6/mod.ts": {
+		"jsr:@hugoalh/is-string-singleline@^1.0.6": {
 			name: "@hugoalh/is-string-singleline",
 			version: "^1.0.6"
 		},
-		"https://raw.githubusercontent.com/hugoalh/sort-es/v0.4.0/collection.ts": {
+		"jsr:@hugoalh/sort@^0.4.0/collection": {
 			name: "@hugoalh/sort",
 			version: "^0.4.0",
 			subPath: "collection"
@@ -54,5 +54,15 @@ await transform({
 		}
 	},
 	outputDirectory: "dist/npm-codeberg",
-	outputDirectoryPreEmpty: true
+	outputDirectoryPreEmpty: true,
+	shims: {
+		blob: false,
+		crypto: false,
+		deno: false,
+		prompts: false,
+		timers: false,
+		undici: false,
+		weakRef: false,
+		webSocket: false
+	}
 });
