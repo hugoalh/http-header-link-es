@@ -29,7 +29,7 @@
 		"vueComponentCase": "ignore"
 	},
 	"imports": { // IMPORTANT: Only for development dependencies!
-		"DNT": "jsr:@hugoalh/deno-nodejs-transformer@^0.9.3",
+		"DNT": "jsr:@hugoalh/deno-nodejs-transformer@^0.10.0",
 		"NPP": "https://raw.githubusercontent.com/hugoalh/npm-publish-patcher/b0d877ffdfa77a2a5c00050f6252f22460ebc131/deno/cli.ts"
 	},
 	"lint": {
